@@ -1,0 +1,7 @@
+﻿services:
+  sweem:
+    image: sweem
+    build:
+      context: .
+      dockerfile: SWEeM/Dockerfile
+
