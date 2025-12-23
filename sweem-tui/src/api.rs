@@ -4,6 +4,8 @@
 //! All methods are non-blocking and designed to run in a separate Tokio task.
 //! Supports full CRUD operations for Clients, Projects, and Users.
 
+#![allow(dead_code)]
+
 use anyhow::{Context, Result};
 use reqwest::Client;
 use uuid::Uuid;

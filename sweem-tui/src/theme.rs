@@ -3,6 +3,8 @@
 //! This module implements the "Kanagawa Dragon" / "Ef-Autumn" color palette.
 //! A low-contrast, warm, dark theme inspired by traditional Japanese ink wash painting.
 
+#![allow(dead_code)]
+
 use ratatui::style::Color;
 
 /// Kanagawa Dragon color palette

@@ -4,6 +4,8 @@
 //! with a centralized App struct holding all application state.
 //! Includes form state for CRUD operations.
 
+#![allow(dead_code)]
+
 use std::time::{Duration, Instant};
 
 use chrono::NaiveDate;
@@ -1066,8 +1068,16 @@ impl App {
             return None;
         }
 
-        // Only submit if on submit button or if it's a text field (Enter submits)
-        if form.current_field() != FormField::SubmitButton && !form.current_field().is_text_input() {
+        // On text input fields, Enter moves to next field instead of submitting
+        if form.current_field().is_text_input() {
+            if let Some(form) = &mut self.form_state {
+                form.next_field();
+            }
+            return None;
+        }
+
+        // Only submit if on submit button
+        if form.current_field() != FormField::SubmitButton {
             return None;
         }
 

@@ -4,6 +4,8 @@
 //! that renders projects as colored bars on a time axis.
 //! Uses Kanagawa Dragon theme colors.
 
+#![allow(dead_code)]
+
 use chrono::{Datelike, Duration, NaiveDate};
 use ratatui::{
     buffer::Buffer,
@@ -141,11 +143,16 @@ impl<'a> TimelineWidget<'a> {
             .unwrap_or_else(|| chrono::Local::now().date_naive() - Duration::days(30))
     }
 
-    /// Convert a date to a column position
-    fn date_to_column(&self, date: NaiveDate, start: NaiveDate, width: u16) -> Option<u16> {
+    /// Convert a date to a column position (returns i64 for full range)
+    fn date_to_column_raw(&self, date: NaiveDate, start: NaiveDate) -> i64 {
         let days_from_start = (date - start).num_days();
         let days_with_offset = days_from_start - self.state.scroll_offset;
-        let column = (days_with_offset as f64 / self.state.days_per_column) as i64;
+        (days_with_offset as f64 / self.state.days_per_column) as i64
+    }
+
+    /// Convert a date to a visible column position (clamped to viewport)
+    fn date_to_column(&self, date: NaiveDate, start: NaiveDate, width: u16) -> Option<u16> {
+        let column = self.date_to_column_raw(date, start);
 
         if column >= 0 && column < width as i64 {
             Some(column as u16)
@@ -231,9 +238,17 @@ impl<'a> TimelineWidget<'a> {
         }
 
         // Draw the project bar
-        let project_start_col = self.date_to_column(project.start_date, start, bar_area_width);
         let project_end_date = project.actual_end_date.unwrap_or(project.planned_end_date);
-        let project_end_col = self.date_to_column(project_end_date, start, bar_area_width);
+
+        // Get raw column positions (can be negative or beyond width)
+        let start_col_raw = self.date_to_column_raw(project.start_date, start);
+        let end_col_raw = self.date_to_column_raw(project_end_date, start);
+
+        // Check if project is visible at all
+        if end_col_raw < 0 || start_col_raw >= bar_area_width as i64 {
+            // Project is completely outside visible area
+            return;
+        }
 
         // Determine bar style based on project status
         let bar_style = if project.is_completed() {
@@ -244,41 +259,23 @@ impl<'a> TimelineWidget<'a> {
             Style::default().fg(color)
         };
 
+        // Calculate visible portion of the bar
+        let visible_start = start_col_raw.max(0) as u16;
+        let visible_end = (end_col_raw as u16).min(bar_area_width - 1);
+
         // Draw the bar
-        if let (Some(start_col), Some(end_col)) = (project_start_col, project_end_col) {
-            for col in start_col..=end_col.min(bar_area_width - 1) {
-                let pos = (bar_area_start + col, area.y + row);
-                if col == start_col {
-                    buf[pos].set_char(BLOCK_LEFT);
-                } else if col == end_col {
-                    buf[pos].set_char(BLOCK_RIGHT);
-                } else {
-                    buf[pos].set_char(BLOCK_FULL);
-                }
-                buf[pos].set_style(bar_style);
+        for col in visible_start..=visible_end {
+            let pos = (bar_area_start + col, area.y + row);
+            // Use left block only if this is the actual project start (not clipped)
+            if col as i64 == start_col_raw {
+                buf[pos].set_char(BLOCK_LEFT);
+            // Use right block only if this is the actual project end (not clipped)
+            } else if col as i64 == end_col_raw {
+                buf[pos].set_char(BLOCK_RIGHT);
+            } else {
+                buf[pos].set_char(BLOCK_FULL);
             }
-        } else if let Some(start_col) = project_start_col {
-            // Project extends beyond visible area
-            for col in start_col..bar_area_width {
-                let pos = (bar_area_start + col, area.y + row);
-                if col == start_col {
-                    buf[pos].set_char(BLOCK_LEFT);
-                } else {
-                    buf[pos].set_char(BLOCK_FULL);
-                }
-                buf[pos].set_style(bar_style);
-            }
-        } else if let Some(end_col) = project_end_col {
-            // Project started before visible area
-            for col in 0..=end_col.min(bar_area_width - 1) {
-                let pos = (bar_area_start + col, area.y + row);
-                if col == end_col {
-                    buf[pos].set_char(BLOCK_RIGHT);
-                } else {
-                    buf[pos].set_char(BLOCK_FULL);
-                }
-                buf[pos].set_style(bar_style);
-            }
+            buf[pos].set_style(bar_style);
         }
 
         // Draw today marker

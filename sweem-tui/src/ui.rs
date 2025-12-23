@@ -577,8 +577,7 @@ fn render_text_field(
     };
 
     let cursor = if is_focused { "█" } else { "" };
-    let hint = if is_focused { " [type to edit]" } else { "" };
-    let input = Paragraph::new(format!(" {}{}{}", display_value, cursor, hint))
+    let input = Paragraph::new(format!(" {}{}", display_value, cursor))
         .style(input_style)
         .block(
             Block::default()
@@ -618,9 +617,8 @@ fn render_selector_field(
         styles::form_input()
     };
 
-    let arrows = if is_focused { " ◄ ▲▼ ►" } else { " ▼" };
-    let hint = if is_focused { " [↑/↓ to change]" } else { "" };
-    let input = Paragraph::new(format!(" {}{}{}", value, arrows, hint))
+    let arrows = if is_focused { " ▲▼" } else { " ▼" };
+    let input = Paragraph::new(format!(" {}{}", value, arrows))
         .style(input_style)
         .block(
             Block::default()
@@ -858,7 +856,7 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
         ]),
         Line::from(vec![
             Span::styled("  Enter         ", Style::default().fg(colors::BLUE)),
-            Span::raw("Submit form"),
+            Span::raw("Next field / Submit on button"),
         ]),
         Line::from(vec![
             Span::styled("  Esc           ", Style::default().fg(colors::BLUE)),

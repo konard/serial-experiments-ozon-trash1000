@@ -4,6 +4,8 @@
 //! DateOnly from C# is mapped to NaiveDate in Rust.
 //! Includes both read DTOs and write DTOs for CRUD operations.
 
+#![allow(dead_code)]
+
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
