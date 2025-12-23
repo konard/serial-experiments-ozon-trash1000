@@ -174,11 +174,17 @@ impl FormField {
             FormField::ClientName
                 | FormField::ClientAddress
                 | FormField::ProjectName
-                | FormField::ProjectStartDate
-                | FormField::ProjectEndDate
                 | FormField::UserName
                 | FormField::UserLogin
                 | FormField::UserPassword
+        )
+    }
+
+    /// Check if this is a date picker field
+    pub fn is_date_picker(&self) -> bool {
+        matches!(
+            self,
+            FormField::ProjectStartDate | FormField::ProjectEndDate
         )
     }
 
@@ -406,6 +412,42 @@ impl FormState {
         if let Some(text) = self.current_text_mut() {
             text.pop();
         }
+    }
+
+    /// Increment the current date field by one day
+    pub fn increment_date(&mut self) {
+        match self.current_field() {
+            FormField::ProjectStartDate => {
+                self.project_start_date = Self::add_days_to_date_string(&self.project_start_date, 1);
+            }
+            FormField::ProjectEndDate => {
+                self.project_end_date = Self::add_days_to_date_string(&self.project_end_date, 1);
+            }
+            _ => {}
+        }
+    }
+
+    /// Decrement the current date field by one day
+    pub fn decrement_date(&mut self) {
+        match self.current_field() {
+            FormField::ProjectStartDate => {
+                self.project_start_date = Self::add_days_to_date_string(&self.project_start_date, -1);
+            }
+            FormField::ProjectEndDate => {
+                self.project_end_date = Self::add_days_to_date_string(&self.project_end_date, -1);
+            }
+            _ => {}
+        }
+    }
+
+    /// Add days to a date string in YYYY-MM-DD format
+    fn add_days_to_date_string(date_str: &str, days: i64) -> String {
+        NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
+            .map(|d| (d + chrono::Duration::days(days)).format("%Y-%m-%d").to_string())
+            .unwrap_or_else(|_| {
+                // If parsing fails, use today's date
+                chrono::Local::now().date_naive().format("%Y-%m-%d").to_string()
+            })
     }
 
     /// Build CreateClientDto from form state
@@ -1005,42 +1047,76 @@ impl App {
             }
             KeyCode::Up => {
                 if let Some(form) = &mut self.form_state {
-                    match form.current_field() {
-                        FormField::ProjectClient => {
-                            if form.project_client_idx > 0 {
-                                form.project_client_idx -= 1;
+                    let field = form.current_field();
+                    if field.is_date_picker() {
+                        // Date picker: Up increases the date
+                        form.increment_date();
+                    } else {
+                        match field {
+                            FormField::ProjectClient => {
+                                if form.project_client_idx > 0 {
+                                    form.project_client_idx -= 1;
+                                }
                             }
-                        }
-                        FormField::ProjectManager => {
-                            if form.project_manager_idx > 0 {
-                                form.project_manager_idx -= 1;
+                            FormField::ProjectManager => {
+                                if form.project_manager_idx > 0 {
+                                    form.project_manager_idx -= 1;
+                                }
                             }
+                            FormField::UserRole => {
+                                form.user_role = form.user_role.next();
+                            }
+                            _ => {}
                         }
-                        FormField::UserRole => {
-                            form.user_role = form.user_role.next();
-                        }
-                        _ => {}
                     }
                 }
                 return None;
             }
             KeyCode::Down => {
                 if let Some(form) = &mut self.form_state {
-                    match form.current_field() {
-                        FormField::ProjectClient => {
-                            if form.project_client_idx < self.clients.len().saturating_sub(1) {
-                                form.project_client_idx += 1;
+                    let field = form.current_field();
+                    if field.is_date_picker() {
+                        // Date picker: Down decreases the date
+                        form.decrement_date();
+                    } else {
+                        match field {
+                            FormField::ProjectClient => {
+                                if form.project_client_idx < self.clients.len().saturating_sub(1) {
+                                    form.project_client_idx += 1;
+                                }
                             }
-                        }
-                        FormField::ProjectManager => {
-                            if form.project_manager_idx < self.users.len().saturating_sub(1) {
-                                form.project_manager_idx += 1;
+                            FormField::ProjectManager => {
+                                if form.project_manager_idx < self.users.len().saturating_sub(1) {
+                                    form.project_manager_idx += 1;
+                                }
                             }
+                            FormField::UserRole => {
+                                form.user_role = form.user_role.next();
+                            }
+                            _ => {}
                         }
-                        FormField::UserRole => {
-                            form.user_role = form.user_role.next();
+                    }
+                }
+                return None;
+            }
+            KeyCode::Left => {
+                if let Some(form) = &mut self.form_state {
+                    if form.current_field().is_date_picker() {
+                        // Date picker: Left decreases by 7 days (one week)
+                        for _ in 0..7 {
+                            form.decrement_date();
                         }
-                        _ => {}
+                    }
+                }
+                return None;
+            }
+            KeyCode::Right => {
+                if let Some(form) = &mut self.form_state {
+                    if form.current_field().is_date_picker() {
+                        // Date picker: Right increases by 7 days (one week)
+                        for _ in 0..7 {
+                            form.increment_date();
+                        }
                     }
                 }
                 return None;
@@ -1068,8 +1144,8 @@ impl App {
             return None;
         }
 
-        // On text input fields, Enter moves to next field instead of submitting
-        if form.current_field().is_text_input() {
+        // On text input and date picker fields, Enter moves to next field instead of submitting
+        if form.current_field().is_text_input() || form.current_field().is_date_picker() {
             if let Some(form) = &mut self.form_state {
                 form.next_field();
             }

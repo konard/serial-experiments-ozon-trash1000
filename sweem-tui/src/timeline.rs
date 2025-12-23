@@ -307,11 +307,17 @@ impl<'a> TimelineWidget<'a> {
         }
 
         // Calculate visible portion of the bar
-        let visible_start = start_col_raw.max(0) as u16;
-        let visible_end = (end_col_raw as u16).min(bar_area_width - 1);
+        // IMPORTANT: Clamp to valid range BEFORE casting to u16 to avoid overflow
+        let visible_start = start_col_raw.max(0).min(bar_area_width as i64 - 1) as u16;
+        let visible_end = end_col_raw.max(0).min(bar_area_width as i64 - 1) as u16;
+
+        // Skip if no visible bar (can happen if start > end after clamping)
+        if visible_end < visible_start {
+            return;
+        }
 
         // Draw the bar with gradient-like effect
-        let bar_length = (visible_end as i64 - visible_start as i64 + 1) as u16;
+        let bar_length = (visible_end - visible_start + 1).max(1);
 
         for col in visible_start..=visible_end {
             let pos = (bar_area_start + col, area.y + row);

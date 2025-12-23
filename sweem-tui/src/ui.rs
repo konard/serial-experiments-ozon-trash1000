@@ -452,23 +452,21 @@ fn render_project_form(frame: &mut Frame, form: &FormState, app: &App, area: Rec
         chunks[2],
     );
 
-    // Start Date field
-    render_text_field(
+    // Start Date field (date picker)
+    render_date_picker_field(
         frame,
         "Start Date:",
         &form.project_start_date,
         form.current_field() == FormField::ProjectStartDate,
-        false,
         chunks[3],
     );
 
-    // End Date field
-    render_text_field(
+    // End Date field (date picker)
+    render_date_picker_field(
         frame,
         "End Date:",
         &form.project_end_date,
         form.current_field() == FormField::ProjectEndDate,
-        false,
         chunks[4],
     );
 
@@ -580,6 +578,51 @@ fn render_text_field(
 
     let cursor = if is_focused { "█" } else { "" };
     let input = Paragraph::new(format!(" {}{}", display_value, cursor))
+        .style(input_style)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(if is_focused {
+                    styles::border_focused()
+                } else {
+                    styles::border_dim()
+                }),
+        );
+    frame.render_widget(input, chunks[1]);
+}
+
+/// Render a date picker field
+fn render_date_picker_field(
+    frame: &mut Frame,
+    label: &str,
+    value: &str,
+    is_focused: bool,
+    area: Rect,
+) {
+    // Use 14 characters for label column to match text fields
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(14), Constraint::Min(10)])
+        .split(area);
+
+    // Label
+    let label_text = Paragraph::new(label)
+        .style(styles::form_label())
+        .alignment(Alignment::Right);
+    frame.render_widget(label_text, chunks[0]);
+
+    // Date picker display with navigation hints
+    let input_style = if is_focused {
+        styles::form_input_focused()
+    } else {
+        styles::form_input()
+    };
+
+    // Show navigation hints when focused
+    let hint = if is_focused { " ◀-7d ▲+1d ▼-1d +7d▶" } else { " 📅" };
+    let display = format!(" {}{}", value, hint);
+
+    let input = Paragraph::new(display)
         .style(input_style)
         .block(
             Block::default()
@@ -797,7 +840,7 @@ fn render_error_popup(frame: &mut Frame, app: &App, area: Rect) {
 /// Render help overlay
 fn render_help_overlay(frame: &mut Frame, area: Rect) {
     let popup_width = 60;
-    let popup_height = 28;
+    let popup_height = 29;
     let popup_area = centered_rect(popup_width, popup_height, area);
 
     frame.render_widget(Clear, popup_area);
@@ -851,7 +894,11 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
         ]),
         Line::from(vec![
             Span::styled("  Up/Down       ", Style::default().fg(colors::BLUE)),
-            Span::raw("Change dropdown selection"),
+            Span::raw("Change dropdown/date (+/-1 day)"),
+        ]),
+        Line::from(vec![
+            Span::styled("  Left/Right    ", Style::default().fg(colors::BLUE)),
+            Span::raw("Date picker: +/-7 days"),
         ]),
         Line::from(vec![
             Span::styled("  Type text     ", Style::default().fg(colors::BLUE)),
