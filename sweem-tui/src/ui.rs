@@ -3,6 +3,7 @@
 //! This module handles all the TUI rendering using ratatui,
 //! implementing the Kanagawa Dragon aesthetic with CRUD forms.
 
+use chrono::{Datelike, NaiveDate};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -356,6 +357,16 @@ fn render_form_modal(frame: &mut Frame, app: &App, area: Rect) {
             .alignment(Alignment::Center);
         frame.render_widget(error_text, error_area);
     }
+
+    // Render mini calendar popup if a date field is focused
+    if form.current_field().is_date_picker() {
+        let date_str = match form.current_field() {
+            FormField::ProjectStartDate => &form.project_start_date,
+            FormField::ProjectEndDate => &form.project_end_date,
+            _ => return,
+        };
+        render_mini_calendar(frame, date_str, area, popup_area);
+    }
 }
 
 /// Render client form fields
@@ -591,7 +602,7 @@ fn render_text_field(
     frame.render_widget(input, chunks[1]);
 }
 
-/// Render a date picker field
+/// Render a date picker field with mini calendar
 fn render_date_picker_field(
     frame: &mut Frame,
     label: &str,
@@ -618,9 +629,10 @@ fn render_date_picker_field(
         styles::form_input()
     };
 
-    // Show navigation hints when focused
-    let hint = if is_focused { " ◀-7d ▲+1d ▼-1d +7d▶" } else { " 📅" };
-    let display = format!(" {}{}", value, hint);
+    // Show navigation hints when focused, plus calendar icon
+    let hint = if is_focused { " ◀-7 ▲+1 ▼-1 +7▶" } else { "" };
+    let calendar_icon = "📅";
+    let display = format!(" {} {}{}", calendar_icon, value, hint);
 
     let input = Paragraph::new(display)
         .style(input_style)
@@ -949,4 +961,140 @@ fn centered_rect(width: u16, height: u16, area: Rect) -> Rect {
     let x = area.x + (area.width.saturating_sub(width)) / 2;
     let y = area.y + (area.height.saturating_sub(height)) / 2;
     Rect::new(x, y, width.min(area.width), height.min(area.height))
+}
+
+/// Render a mini calendar popup next to the form
+fn render_mini_calendar(frame: &mut Frame, date_str: &str, screen_area: Rect, form_area: Rect) {
+    // Parse the date string
+    let date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
+        .unwrap_or_else(|_| chrono::Local::now().date_naive());
+
+    // Calendar dimensions
+    let cal_width = 24;
+    let cal_height = 10;
+
+    // Position calendar to the right of the form if space, otherwise to the left
+    let cal_x = if form_area.x + form_area.width + cal_width + 2 < screen_area.width {
+        form_area.x + form_area.width + 1
+    } else if form_area.x >= cal_width + 2 {
+        form_area.x - cal_width - 1
+    } else {
+        // Center below
+        (screen_area.width.saturating_sub(cal_width)) / 2
+    };
+
+    let cal_y = form_area.y + 2;
+    let cal_area = Rect::new(
+        cal_x,
+        cal_y.min(screen_area.height.saturating_sub(cal_height)),
+        cal_width,
+        cal_height,
+    );
+
+    frame.render_widget(Clear, cal_area);
+
+    // Build calendar lines
+    let month_names = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
+    ];
+    let month_name = month_names[date.month0() as usize];
+    let year = date.year();
+
+    // Get first day of month and number of days
+    let first_of_month = NaiveDate::from_ymd_opt(year, date.month(), 1).unwrap();
+    let days_in_month = if date.month() == 12 {
+        NaiveDate::from_ymd_opt(year + 1, 1, 1)
+    } else {
+        NaiveDate::from_ymd_opt(year, date.month() + 1, 1)
+    }.unwrap().pred_opt().unwrap().day();
+
+    // Day of week for first day (0 = Monday, 6 = Sunday)
+    let first_weekday = first_of_month.weekday().num_days_from_monday() as usize;
+
+    let mut lines = Vec::new();
+
+    // Header with month/year
+    let header = format!("{} {}", month_name, year);
+    lines.push(Line::from(vec![
+        Span::styled(
+            format!("{:^22}", header),
+            Style::default().fg(colors::BLUE).add_modifier(Modifier::BOLD),
+        ),
+    ]));
+
+    // Day of week headers
+    lines.push(Line::from(vec![
+        Span::styled(" Mo Tu We Th Fr ", styles::text_dim()),
+        Span::styled("Sa ", Style::default().fg(colors::BLUE)),
+        Span::styled("Su", Style::default().fg(colors::RED)),
+    ]));
+
+    // Build week rows
+    let mut day = 1u32;
+    let selected_day = date.day();
+    let today = chrono::Local::now().date_naive();
+    let today_day = if today.year() == year && today.month() == date.month() {
+        Some(today.day())
+    } else {
+        None
+    };
+
+    for week in 0..6 {
+        let mut spans = Vec::new();
+        spans.push(Span::raw(" "));
+
+        for weekday in 0..7 {
+            if (week == 0 && weekday < first_weekday) || day > days_in_month {
+                spans.push(Span::raw("   "));
+            } else {
+                let is_selected = day == selected_day;
+                let is_today = today_day == Some(day);
+                let is_weekend = weekday >= 5;
+
+                let style = if is_selected {
+                    Style::default()
+                        .fg(colors::BG_DARK)
+                        .bg(colors::BLUE)
+                        .add_modifier(Modifier::BOLD)
+                } else if is_today {
+                    Style::default()
+                        .fg(colors::YELLOW)
+                        .add_modifier(Modifier::BOLD)
+                } else if is_weekend {
+                    if weekday == 5 {
+                        Style::default().fg(colors::BLUE)
+                    } else {
+                        Style::default().fg(colors::RED)
+                    }
+                } else {
+                    styles::text()
+                };
+
+                spans.push(Span::styled(format!("{:2} ", day), style));
+                day += 1;
+            }
+        }
+
+        if day <= days_in_month || week == 0 {
+            lines.push(Line::from(spans));
+        }
+    }
+
+    // Instructions
+    lines.push(Line::from(vec![
+        Span::styled("▲▼±1d  ◀▶±7d", styles::text_hint()),
+    ]));
+
+    let calendar = Paragraph::new(lines)
+        .block(
+            Block::default()
+                .title(" Calendar ")
+                .title_style(styles::title())
+                .borders(Borders::ALL)
+                .border_style(styles::border_focused())
+                .style(Style::default().bg(colors::BG_MEDIUM)),
+        );
+
+    frame.render_widget(calendar, cal_area);
 }

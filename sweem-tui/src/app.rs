@@ -883,6 +883,16 @@ impl App {
                 self.is_loading = false;
                 self.last_refresh = Some(Instant::now());
                 self.log(LogEntry::success(format!("Loaded {} projects", count)));
+
+                // Auto-center timeline on first project or today when projects are loaded
+                if !self.projects.is_empty() {
+                    // Select first project if none selected
+                    if self.timeline_state.selected_project.is_none() {
+                        self.timeline_state.selected_project = Some(0);
+                    }
+                    // Jump to show the selected (or first) project
+                    self.auto_center_timeline();
+                }
             }
             ApiMessage::ClientsLoaded(clients) => {
                 let count = clients.len();
@@ -1337,6 +1347,20 @@ impl App {
                 let viewport_width = 100u16;
                 self.timeline_state.jump_to_project(project, &self.projects, viewport_width);
             }
+        }
+    }
+
+    /// Auto-center the timeline on the selected project or first project
+    fn auto_center_timeline(&mut self) {
+        if self.projects.is_empty() {
+            return;
+        }
+
+        // Get the project to center on (selected or first)
+        let idx = self.timeline_state.selected_project.unwrap_or(0);
+        if let Some(project) = self.projects.get(idx) {
+            let viewport_width = 100u16;
+            self.timeline_state.jump_to_project(project, &self.projects, viewport_width);
         }
     }
 
