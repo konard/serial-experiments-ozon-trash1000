@@ -52,4 +52,7 @@ CodeCoverage/
 # NUnit
 *.VisualState.xml
 TestResult.xml
-nunit-*.xmlsweem-tui/target/
+nunit-*.xml
+
+# Rust build artifacts
+sweem-tui/target/
