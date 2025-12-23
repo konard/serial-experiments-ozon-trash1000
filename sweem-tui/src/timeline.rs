@@ -114,6 +114,27 @@ impl TimelineState {
         self.scroll_offset = (days_from_start - center_offset).max(0);
     }
 
+    /// Jump to and center on a specific project
+    pub fn jump_to_project(&mut self, project: &ProjectDto, projects: &[ProjectDto], viewport_width: u16) {
+        let timeline_start = self.calculate_timeline_start(projects);
+
+        // Calculate the middle of the project's duration
+        let project_end = project.actual_end_date.unwrap_or(project.planned_end_date);
+        let project_mid = project.start_date + Duration::days(
+            (project_end - project.start_date).num_days() / 2
+        );
+
+        // Calculate how many days from timeline start to project middle
+        let days_from_start = (project_mid - timeline_start).num_days();
+
+        // Center the viewport on this point
+        // Account for the name column (about 24 chars) in the viewport
+        let effective_width = viewport_width.saturating_sub(24) as i64;
+        let center_offset = (effective_width / 2) * self.days_per_column as i64;
+
+        self.scroll_offset = (days_from_start - center_offset).max(0);
+    }
+
     /// Calculate the start date of the timeline
     fn calculate_timeline_start(&self, projects: &[ProjectDto]) -> NaiveDate {
         projects

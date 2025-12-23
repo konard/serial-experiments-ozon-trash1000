@@ -1225,9 +1225,17 @@ impl App {
             }
             KeyCode::Char('j') | KeyCode::Down => {
                 self.timeline_state.select_next(self.projects.len());
+                // Auto-jump to selected project when navigating
+                self.jump_to_selected_project();
             }
             KeyCode::Char('k') | KeyCode::Up => {
                 self.timeline_state.select_previous(self.projects.len());
+                // Auto-jump to selected project when navigating
+                self.jump_to_selected_project();
+            }
+            KeyCode::Enter => {
+                // Jump to center the selected project in the viewport
+                self.jump_to_selected_project();
             }
             KeyCode::Char('+') | KeyCode::Char('=') => {
                 self.timeline_state.zoom_in();
@@ -1242,6 +1250,17 @@ impl App {
                 self.timeline_state.scroll_offset = 0;
             }
             _ => {}
+        }
+    }
+
+    /// Jump timeline viewport to show the currently selected project
+    fn jump_to_selected_project(&mut self) {
+        if let Some(idx) = self.timeline_state.selected_project {
+            if let Some(project) = self.projects.get(idx) {
+                // Use approximate viewport width (adjust based on typical terminal width)
+                let viewport_width = 100u16;
+                self.timeline_state.jump_to_project(project, &self.projects, viewport_width);
+            }
         }
     }
 

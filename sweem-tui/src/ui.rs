@@ -553,9 +553,10 @@ fn render_text_field(
     is_password: bool,
     area: Rect,
 ) {
+    // Use 14 characters for label column to accommodate "Start Date:" and "End Date:" with padding
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(12), Constraint::Min(10)])
+        .constraints([Constraint::Length(14), Constraint::Min(10)])
         .split(area);
 
     // Label
@@ -600,9 +601,10 @@ fn render_selector_field(
     is_focused: bool,
     area: Rect,
 ) {
+    // Use 14 characters for label column to match text fields
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(12), Constraint::Min(10)])
+        .constraints([Constraint::Length(14), Constraint::Min(10)])
         .split(area);
 
     // Label
