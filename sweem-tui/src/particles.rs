@@ -1,8 +1,7 @@
 //! Particle system for background animations.
 //!
 //! This module implements a lightweight particle system that creates
-//! ambient effects: floating ash, dust particles, or subtle embers.
-//! Designed to match the Kanagawa Dragon aesthetic.
+//! a "Digital Rain" or "Starfield" effect in the background of the TUI.
 
 use rand::Rng;
 use ratatui::{
@@ -12,18 +11,14 @@ use ratatui::{
     widgets::Widget,
 };
 
-use crate::theme::colors;
-
 /// Types of background animations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ParticleMode {
-    /// Floating ash particles (default for Kanagawa Dragon theme)
+    /// Matrix-style digital rain effect
     #[default]
-    FloatingAsh,
-    /// Subtle dust particles
-    Dust,
-    /// Warm ember effect
-    Embers,
+    DigitalRain,
+    /// Space starfield effect
+    Starfield,
     /// No particles (static background)
     None,
 }
@@ -32,19 +27,17 @@ impl ParticleMode {
     /// Cycle to the next mode
     pub fn next(&self) -> Self {
         match self {
-            ParticleMode::FloatingAsh => ParticleMode::Dust,
-            ParticleMode::Dust => ParticleMode::Embers,
-            ParticleMode::Embers => ParticleMode::None,
-            ParticleMode::None => ParticleMode::FloatingAsh,
+            ParticleMode::DigitalRain => ParticleMode::Starfield,
+            ParticleMode::Starfield => ParticleMode::None,
+            ParticleMode::None => ParticleMode::DigitalRain,
         }
     }
 
     /// Get display name
     pub fn name(&self) -> &'static str {
         match self {
-            ParticleMode::FloatingAsh => "Floating Ash",
-            ParticleMode::Dust => "Dust",
-            ParticleMode::Embers => "Embers",
+            ParticleMode::DigitalRain => "Digital Rain",
+            ParticleMode::Starfield => "Starfield",
             ParticleMode::None => "None",
         }
     }
@@ -59,7 +52,7 @@ pub struct Particle {
     pub y: f32,
     /// Velocity in Y direction
     pub vy: f32,
-    /// Velocity in X direction
+    /// Velocity in X direction (for starfield)
     pub vx: f32,
     /// Character to display
     pub char: char,
@@ -67,161 +60,78 @@ pub struct Particle {
     pub brightness: f32,
     /// Fade rate
     pub fade_rate: f32,
-    /// Particle age (for animation)
-    pub age: u32,
-    /// Sway phase (for gentle horizontal movement)
-    pub sway_phase: f32,
 }
 
 impl Particle {
-    /// Create a new floating ash particle
-    pub fn new_ash(width: u16, height: u16) -> Self {
+    /// Create a new digital rain particle
+    pub fn new_rain(x: u16, _max_y: u16) -> Self {
         let mut rng = rand::thread_rng();
         Self {
-            x: rng.gen_range(0.0..width as f32),
-            y: rng.gen_range(0.0..height as f32),
-            vy: rng.gen_range(-0.1..-0.02), // Slowly rise like ash
+            x: x as f32,
+            y: 0.0,
+            vy: rng.gen_range(0.3..1.5),
             vx: 0.0,
-            char: Self::random_ash_char(),
-            brightness: rng.gen_range(0.2..0.6),
-            fade_rate: rng.gen_range(0.002..0.008),
-            age: 0,
-            sway_phase: rng.gen_range(0.0..std::f32::consts::TAU),
+            char: Self::random_rain_char(),
+            brightness: 1.0,
+            fade_rate: rng.gen_range(0.01..0.05),
         }
     }
 
-    /// Create a new dust particle
-    pub fn new_dust(width: u16, height: u16) -> Self {
+    /// Create a new starfield particle
+    pub fn new_star(width: u16, height: u16) -> Self {
         let mut rng = rand::thread_rng();
         Self {
             x: rng.gen_range(0.0..width as f32),
             y: rng.gen_range(0.0..height as f32),
-            vy: rng.gen_range(-0.05..0.05), // Gentle drift
-            vx: rng.gen_range(-0.02..0.02),
-            char: Self::random_dust_char(),
-            brightness: rng.gen_range(0.1..0.4),
-            fade_rate: rng.gen_range(0.001..0.005),
-            age: 0,
-            sway_phase: rng.gen_range(0.0..std::f32::consts::TAU),
+            vy: 0.0,
+            vx: rng.gen_range(0.1..0.8),
+            char: Self::random_star_char(),
+            brightness: rng.gen_range(0.3..1.0),
+            fade_rate: rng.gen_range(0.005..0.02),
         }
     }
 
-    /// Create a new ember particle
-    pub fn new_ember(width: u16, _height: u16) -> Self {
+    /// Get a random character for digital rain
+    fn random_rain_char() -> char {
         let mut rng = rand::thread_rng();
-        Self {
-            x: rng.gen_range(0.0..width as f32),
-            y: rng.gen_range(0.7.._height as f32), // Start from bottom
-            vy: rng.gen_range(-0.2..-0.05), // Rise like embers
-            vx: rng.gen_range(-0.03..0.03),
-            char: Self::random_ember_char(),
-            brightness: rng.gen_range(0.4..0.8),
-            fade_rate: rng.gen_range(0.005..0.015),
-            age: 0,
-            sway_phase: rng.gen_range(0.0..std::f32::consts::TAU),
-        }
-    }
-
-    /// Get a random character for ash
-    fn random_ash_char() -> char {
-        let mut rng = rand::thread_rng();
-        let chars = ['·', '∙', '˙', '°', '·', '∙'];
+        let chars: Vec<char> = "01アイウエオカキクケコサシスセソタチツテト".chars().collect();
         chars[rng.gen_range(0..chars.len())]
     }
 
-    /// Get a random character for dust
-    fn random_dust_char() -> char {
+    /// Get a random character for starfield
+    fn random_star_char() -> char {
         let mut rng = rand::thread_rng();
-        let chars = ['·', '∙', '⁺', '˚', '∘'];
-        chars[rng.gen_range(0..chars.len())]
-    }
-
-    /// Get a random character for embers
-    fn random_ember_char() -> char {
-        let mut rng = rand::thread_rng();
-        let chars = ['◦', '°', '∘', '•', '·'];
+        let chars = ['·', '•', '∙', '○', '◦', '*', '+', '×'];
         chars[rng.gen_range(0..chars.len())]
     }
 
     /// Update particle position and state
-    pub fn update(&mut self, mode: ParticleMode) {
-        self.age = self.age.wrapping_add(1);
-
-        // Apply sway for natural movement
-        let sway = (self.sway_phase + self.age as f32 * 0.05).sin() * 0.02;
-
-        match mode {
-            ParticleMode::FloatingAsh => {
-                self.y += self.vy;
-                self.x += sway;
-            }
-            ParticleMode::Dust => {
-                self.y += self.vy;
-                self.x += self.vx + sway * 0.5;
-            }
-            ParticleMode::Embers => {
-                self.y += self.vy;
-                self.x += self.vx + sway;
-                // Embers flicker
-                if rand::thread_rng().gen_ratio(1, 10) {
-                    self.brightness = (self.brightness + rand::thread_rng().gen_range(-0.1..0.1))
-                        .clamp(0.2, 0.9);
-                }
-            }
-            ParticleMode::None => {}
-        }
-
+    pub fn update(&mut self) {
+        self.y += self.vy;
+        self.x += self.vx;
         self.brightness -= self.fade_rate;
+
+        // Occasionally change the character (for rain effect)
+        if rand::thread_rng().gen_ratio(1, 10) {
+            self.char = Self::random_rain_char();
+        }
     }
 
     /// Check if particle is still visible
     pub fn is_alive(&self, max_y: u16, max_x: u16) -> bool {
-        self.brightness > 0.05
-            && self.y >= 0.0
-            && self.y < max_y as f32
-            && self.x >= 0.0
-            && self.x < max_x as f32
+        self.brightness > 0.0 && self.y < max_y as f32 && self.x < max_x as f32
     }
 
-    /// Get the color based on brightness and mode
+    /// Get the color based on brightness
     pub fn get_color(&self, mode: ParticleMode) -> Color {
         match mode {
-            ParticleMode::FloatingAsh => {
-                // Warm gray ash color
-                let base = colors::PARTICLE_ASH;
-                if let Color::Rgb(r, g, b) = base {
-                    let factor = self.brightness;
-                    Color::Rgb(
-                        (r as f32 * factor) as u8,
-                        (g as f32 * factor) as u8,
-                        (b as f32 * factor) as u8,
-                    )
-                } else {
-                    base
-                }
+            ParticleMode::DigitalRain => {
+                let intensity = (self.brightness * 255.0) as u8;
+                Color::Rgb(0, intensity, intensity / 3)
             }
-            ParticleMode::Dust => {
-                // Slightly cooler dust
-                let base = colors::PARTICLE_DUST;
-                if let Color::Rgb(r, g, b) = base {
-                    let factor = self.brightness;
-                    Color::Rgb(
-                        (r as f32 * factor) as u8,
-                        (g as f32 * factor) as u8,
-                        (b as f32 * factor) as u8,
-                    )
-                } else {
-                    base
-                }
-            }
-            ParticleMode::Embers => {
-                // Warm ember glow - more orange/red
-                let factor = self.brightness;
-                Color::Rgb(
-                    (180.0 * factor) as u8,
-                    (80.0 * factor) as u8,
-                    (40.0 * factor) as u8,
-                )
+            ParticleMode::Starfield => {
+                let intensity = (self.brightness * 255.0) as u8;
+                Color::Rgb(intensity, intensity, intensity)
             }
             ParticleMode::None => Color::Reset,
         }
@@ -243,7 +153,7 @@ pub struct ParticleSystem {
 
 impl Default for ParticleSystem {
     fn default() -> Self {
-        Self::new(ParticleMode::FloatingAsh, 60)
+        Self::new(ParticleMode::DigitalRain, 100)
     }
 }
 
@@ -286,7 +196,7 @@ impl ParticleSystem {
 
         // Update existing particles
         for particle in &mut self.particles {
-            particle.update(self.mode);
+            particle.update();
         }
 
         // Remove dead particles
@@ -302,25 +212,20 @@ impl ParticleSystem {
         let mut rng = rand::thread_rng();
 
         match self.mode {
-            ParticleMode::FloatingAsh => {
-                // Spawn ash particles slowly
-                if self.frame_count % 8 == 0 && self.particles.len() < self.max_particles {
-                    let num_new = rng.gen_range(1..=2).min(self.max_particles - self.particles.len());
+            ParticleMode::DigitalRain => {
+                // Spawn a few new rain drops each frame
+                if self.frame_count % 3 == 0 && self.particles.len() < self.max_particles {
+                    let num_new = rng.gen_range(1..=3).min(self.max_particles - self.particles.len());
                     for _ in 0..num_new {
-                        self.particles.push(Particle::new_ash(width, height));
+                        let x = rng.gen_range(0..width);
+                        self.particles.push(Particle::new_rain(x, height));
                     }
                 }
             }
-            ParticleMode::Dust => {
-                // Maintain a steady number of dust particles
-                if self.frame_count % 10 == 0 && self.particles.len() < self.max_particles / 2 {
-                    self.particles.push(Particle::new_dust(width, height));
-                }
-            }
-            ParticleMode::Embers => {
-                // Spawn embers from bottom occasionally
-                if self.frame_count % 15 == 0 && self.particles.len() < self.max_particles / 3 {
-                    self.particles.push(Particle::new_ember(width, height));
+            ParticleMode::Starfield => {
+                // Maintain a steady number of stars
+                while self.particles.len() < self.max_particles / 2 {
+                    self.particles.push(Particle::new_star(width, height));
                 }
             }
             ParticleMode::None => {}

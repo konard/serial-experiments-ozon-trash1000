@@ -15,7 +15,7 @@ use crate::models::{
     ClientDto, CreateClientDto, CreateProjectDto, CreateUserDto, ProjectDto, Role,
     UpdateClientDto, UpdateProjectDto, UpdateUserDto, UserDto,
 };
-use crate::particles::{ParticleMode, ParticleSystem};
+use crate::particles::ParticleSystem;
 use crate::timeline::TimelineState;
 
 /// Active tab in the application
@@ -683,7 +683,7 @@ impl App {
             clients: Vec::new(),
             users: Vec::new(),
             timeline_state: TimelineState::default(),
-            particle_system: ParticleSystem::new(ParticleMode::FloatingAsh, 60),
+            particle_system: ParticleSystem::default(),
             error_popup: None,
             form_state: None,
             confirm_dialog: None,

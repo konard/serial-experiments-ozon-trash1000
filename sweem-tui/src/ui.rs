@@ -576,8 +576,9 @@ fn render_text_field(
         styles::form_input()
     };
 
-    let cursor = if is_focused { "_" } else { "" };
-    let input = Paragraph::new(format!(" {}{}", display_value, cursor))
+    let cursor = if is_focused { "█" } else { "" };
+    let hint = if is_focused { " [type to edit]" } else { "" };
+    let input = Paragraph::new(format!(" {}{}{}", display_value, cursor, hint))
         .style(input_style)
         .block(
             Block::default()
@@ -610,15 +611,16 @@ fn render_selector_field(
         .alignment(Alignment::Right);
     frame.render_widget(label_text, chunks[0]);
 
-    // Selector display
+    // Selector display with arrows indicators
     let input_style = if is_focused {
         styles::form_input_focused()
     } else {
         styles::form_input()
     };
 
-    let arrows = if is_focused { " [Up/Down]" } else { "" };
-    let input = Paragraph::new(format!(" {}{}", value, arrows))
+    let arrows = if is_focused { " ◄ ▲▼ ►" } else { " ▼" };
+    let hint = if is_focused { " [↑/↓ to change]" } else { "" };
+    let input = Paragraph::new(format!(" {}{}{}", value, arrows, hint))
         .style(input_style)
         .block(
             Block::default()
@@ -793,8 +795,8 @@ fn render_error_popup(frame: &mut Frame, app: &App, area: Rect) {
 
 /// Render help overlay
 fn render_help_overlay(frame: &mut Frame, area: Rect) {
-    let popup_width = 55;
-    let popup_height = 22;
+    let popup_width = 60;
+    let popup_height = 28;
     let popup_area = centered_rect(popup_width, popup_height, area);
 
     frame.render_widget(Clear, popup_area);
@@ -812,11 +814,11 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
         ]),
         Line::from(vec![
             Span::styled("  Tab/Shift+Tab ", Style::default().fg(colors::BLUE)),
-            Span::raw("Switch tabs"),
+            Span::raw("Switch tabs / form fields"),
         ]),
         Line::from(vec![
             Span::styled("  j/k or Up/Down", Style::default().fg(colors::BLUE)),
-            Span::raw("Move up/down"),
+            Span::raw("Move up/down in lists"),
         ]),
         Line::from(vec![
             Span::styled("  h/l or Left/Right", Style::default().fg(colors::BLUE)),
@@ -840,15 +842,27 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("Timeline", Style::default().fg(colors::PURPLE).add_modifier(Modifier::BOLD)),
+            Span::styled("Form Editing", Style::default().fg(colors::PURPLE).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
-            Span::styled("  +/-           ", Style::default().fg(colors::BLUE)),
-            Span::raw("Zoom in/out"),
+            Span::styled("  Tab           ", Style::default().fg(colors::BLUE)),
+            Span::raw("Move to next field"),
         ]),
         Line::from(vec![
-            Span::styled("  t             ", Style::default().fg(colors::BLUE)),
-            Span::raw("Center on today"),
+            Span::styled("  Up/Down       ", Style::default().fg(colors::BLUE)),
+            Span::raw("Change dropdown selection"),
+        ]),
+        Line::from(vec![
+            Span::styled("  Type text     ", Style::default().fg(colors::BLUE)),
+            Span::raw("Edit text fields directly"),
+        ]),
+        Line::from(vec![
+            Span::styled("  Enter         ", Style::default().fg(colors::BLUE)),
+            Span::raw("Submit form"),
+        ]),
+        Line::from(vec![
+            Span::styled("  Esc           ", Style::default().fg(colors::BLUE)),
+            Span::raw("Cancel / Close form"),
         ]),
         Line::from(""),
         Line::from(vec![

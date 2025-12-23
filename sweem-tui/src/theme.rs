@@ -80,13 +80,6 @@ pub mod colors {
     /// In-progress project bar
     pub const PROJECT_ACTIVE: Color = BLUE;
 
-    // === Particle/Animation Colors ===
-    /// Ash particle color (warm gray)
-    pub const PARTICLE_ASH: Color = Color::Rgb(0x5A, 0x55, 0x4A);
-    /// Dust particle color (slightly brighter)
-    pub const PARTICLE_DUST: Color = Color::Rgb(0x6A, 0x65, 0x5A);
-    /// Ember particle color (warm orange glow)
-    pub const PARTICLE_EMBER: Color = Color::Rgb(0x8A, 0x60, 0x50);
 }
 
 /// Color palette for project bars in the timeline
